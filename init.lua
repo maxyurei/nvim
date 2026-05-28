@@ -100,9 +100,8 @@ vim.g.have_nerd_font = false
 
 -- Make line numbers default
 vim.o.number = true
--- You can also add relative line numbers, to help with jumping.
---  Experiment for yourself to see if you like it!
--- vim.o.relativenumber = true
+-- Relative line numbers — distance from cursor on every line, lets you do `5j` / `12k` precisely
+vim.o.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
@@ -170,6 +169,35 @@ vim.o.confirm = true
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+
+-- CUSTOM KEYMAPS
+-- jj to escape insert mode
+vim.keymap.set('i', 'jj', '<Esc>', { desc = 'Exit insert mode' })
+
+-- Save with Ctrl+S
+vim.keymap.set({ 'n', 'i' }, '<C-s>', '<cmd>w<CR>', { desc = 'Save file' })
+
+-- Run current Python file
+vim.keymap.set('n', '<leader>r', ':w<CR>:!python3 %<CR>', { desc = '[R]un python file' })
+
+-- New file
+vim.keymap.set('n', '<leader>n', ':enew<CR>', { desc = '[N]ew file' })
+
+-- Move lines up and down in visual mode (like Alt+arrow in VS Code)
+vim.keymap.set('v', 'J', ":m '>+1<CR>gv=gv", { desc = 'Move line down' })
+vim.keymap.set('v', 'K', ":m '<-2<CR>gv=gv", { desc = 'Move line up' })
+
+-- Keep cursor centered when scrolling
+vim.keymap.set('n', '<C-d>', '<C-d>zz')
+vim.keymap.set('n', '<C-u>', '<C-u>zz')
+
+-- Split windows (uppercase H to avoid collision with Telescope's <leader>sh = search help)
+vim.keymap.set('n', '<leader>sv', ':vsplit<CR>', { desc = '[S]plit [V]ertical' })
+vim.keymap.set('n', '<leader>sH', ':split<CR>', { desc = '[S]plit [H]orizontal' })
+
+-- STAYS in indent mode until disrupted
+vim.keymap.set('v', '>', '>gv', { desc = 'Indent and stay in visual mode' })
+vim.keymap.set('v', '<', '<gv', { desc = 'Unindent and stay in visual mode' })
 
 -- Diagnostic Config & Keymaps
 -- See :help vim.diagnostic.Opts
@@ -257,6 +285,9 @@ rtp:prepend(lazypath)
 require('lazy').setup({
   -- NOTE: Plugins can be added via a link or github org/name. To run setup automatically, use `opts = {}`
   { 'NMAC427/guess-indent.nvim', opts = {} },
+
+
+
 
   -- Alternatively, use `config = function() ... end` for full control over the configuration.
   -- If you prefer to call `setup` explicitly, use:
@@ -600,6 +631,7 @@ require('lazy').setup({
       --  See `:help lsp-config` for information about keys and how to configure
       ---@type table<string, vim.lsp.Config>
       local servers = {
+        pyright = {},
         -- clangd = {},
         -- gopls = {},
         -- pyright = {},
@@ -610,8 +642,6 @@ require('lazy').setup({
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
-
-        stylua = {}, -- Used to format Lua code
 
         -- Special Lua Config, as recommended by neovim help docs
         lua_ls = {
@@ -657,7 +687,7 @@ require('lazy').setup({
       -- You can press `g?` for help in this menu.
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
-        -- You can add other tools here that you want Mason to install
+        'stylua', -- Lua formatter (used by conform.nvim, not an LSP server)
       })
 
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -702,6 +732,7 @@ require('lazy').setup({
       },
       -- You can also specify external formatters in here.
       formatters_by_ft = {
+        lua = { 'stylua' },
         -- rust = { 'rustfmt' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
@@ -768,6 +799,10 @@ require('lazy').setup({
         --
         -- See :h blink-cmp-config-keymap for defining your own keymap
         preset = 'default',
+        -- CUSTOM ACCEPTIONS TO AUTOCOMPLETION
+        ['<Tab>'] = { 'select_next', 'snippet_forward', 'fallback' },
+        ['<S-Tab>'] = { 'select_prev', 'snippet_backward', 'fallback' },
+        ['<CR>'] = { 'accept', 'fallback' },
 
         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
         --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
@@ -951,14 +986,12 @@ require('lazy').setup({
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
-  -- require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommended keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
-  --
-  --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
@@ -985,6 +1018,10 @@ require('lazy').setup({
     },
   },
 })
+
+
+require("custom.options")
+require("custom.autocmds")
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
