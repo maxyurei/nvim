@@ -8,22 +8,31 @@ return {
   'sphamba/smear-cursor.nvim',
   event = 'CursorMoved',
   opts = {
-    -- Frame interval in ms. Lower = more frames = smoother motion (17 ≈ 60fps default).
-    -- 7 ≈ ~140fps; the main fix for choppiness when the terminal can keep up.
-    time_interval = 7,
+    -- Frame interval in ms. 17 ≈ 60fps. WSL2's terminal pipeline can't sustain
+    -- the old 7ms (~140fps) — it lagged AND flickered from flooding the pipe.
+    -- 60fps still looks smooth and roughly halves the CPU cost of the effect.
+    time_interval = 17,
 
-    -- Higher = snappier (shorter smear); lower = longer, more gradual trail.
-    stiffness = 0.6,
-    trailing_stiffness = 0.4,
-    damping = 0.65,
-    -- Anti-aliasing quality of the trail edges (lower = smoother gradient).
-    matrix_pixel_threshold = 0.5,
+    -- Higher = snappier (shorter smear that settles fast = fewer frames drawn).
+    -- Tuned up from the old floaty values so the animation completes quickly.
+    stiffness = 0.8,
+    trailing_stiffness = 0.6,
+    damping = 0.8,
+    -- Anti-aliasing quality of the trail edges (lower = smoother, cleaner gradient).
+    -- Dropped from 0.5 → 0.3 to recover some of the soft "shadow" look without the
+    -- flickery legacy block glyphs — this draws more partial-intensity cells instead.
+    matrix_pixel_threshold = 0.3,
 
     smear_between_buffers = true,
     smear_between_neighbor_lines = true,
 
-    -- Sub-cell block glyphs give fractional-character resolution = much smoother smear.
-    -- Verified supported by this terminal+font (legacy computing symbols U+1FB00-1FBFF render).
-    legacy_computing_symbols_support = true,
+    -- Don't smear while typing — keeps the cursor instant/solid in insert mode
+    -- (fixes the typing lag/flicker) while still smearing on normal-mode jumps.
+    smear_insert_mode = false,
+
+    -- OFF: these sub-cell block glyphs (U+1FB00-1FBFF) must render pixel-perfect
+    -- every frame; on WSL2 they repaint slightly off and cause the normal-mode
+    -- flicker. Disabling makes the smear marginally coarser but flicker-free.
+    legacy_computing_symbols_support = false,
   },
 }

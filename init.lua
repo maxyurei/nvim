@@ -115,6 +115,26 @@ vim.o.showmode = false
 --  See `:help 'clipboard'`
 vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
 
+-- WSL clipboard: force win32yank so pasting from Windows (browser, etc.) strips
+-- the CRLF carriage returns that otherwise show up as `^M`. We set this
+-- explicitly because WSLg exposes $DISPLAY, which makes Neovim auto-pick xclip
+-- (which does NOT strip `\r`). `-o --lf` converts CRLF->LF on paste.
+local win32yank = vim.fn.expand '~/.local/bin/win32yank.exe'
+if vim.fn.executable(win32yank) == 1 then
+  vim.g.clipboard = {
+    name = 'win32yank-wsl',
+    copy = {
+      ['+'] = { win32yank, '-i', '--crlf' },
+      ['*'] = { win32yank, '-i', '--crlf' },
+    },
+    paste = {
+      ['+'] = { win32yank, '-o', '--lf' },
+      ['*'] = { win32yank, '-o', '--lf' },
+    },
+    cache_enabled = 0,
+  }
+end
+
 -- Enable break indent
 vim.o.breakindent = true
 
@@ -632,6 +652,13 @@ require('lazy').setup({
       ---@type table<string, vim.lsp.Config>
       local servers = {
         pyright = {},
+        -- Ruff: linting + code actions (autofix, organize imports). Runs alongside Pyright.
+        -- Disable Ruff's hover so Pyright owns hover docs (avoids duplicate/weaker popups).
+        ruff = {
+          on_attach = function(client)
+            client.server_capabilities.hoverProvider = false
+          end,
+        },
         -- clangd = {},
         -- gopls = {},
         -- pyright = {},
@@ -719,7 +746,7 @@ require('lazy').setup({
         -- You can specify filetypes to autoformat on save here:
         local enabled_filetypes = {
           -- lua = true,
-          -- python = true,
+          python = true,
         }
         if enabled_filetypes[vim.bo[bufnr].filetype] then
           return { timeout_ms = 500 }
@@ -733,6 +760,8 @@ require('lazy').setup({
       -- You can also specify external formatters in here.
       formatters_by_ft = {
         lua = { 'stylua' },
+        -- Organize imports first, then format (black + isort equivalent, via Ruff)
+        python = { 'ruff_organize_imports', 'ruff_format' },
         -- rust = { 'rustfmt' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
@@ -1022,6 +1051,7 @@ require('lazy').setup({
 
 require("custom.options")
 require("custom.autocmds")
+require("custom.keymaps")
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
